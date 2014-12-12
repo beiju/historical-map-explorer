@@ -43,12 +43,17 @@ var x = when.reduce(filenames, function(prevPromise, filename, i) {
 			var paddedW = Math.ceil(features.width/(256 * factor)) * 256;
 			var paddedH = Math.ceil(features.height/(256 * factor)) * 256;
 			var cmd = [filename, '-background', 'none', '-gravity', 'southwest', '-resize', 100/factor + '%', '-extent', paddedW+'x'+paddedH+'!', '+repage', '-crop', '256x256', '-set', 'filename:tile', (zoomLevels-i+ZOOM_OFFSET)+'_%[fx:page.x/256]_%[fx:'+numRows+'-(page.y/256)]', '+repage', '-extent', '256x256', newdirname+'/%[filename:tile].png'];
-			conversions.push(im.convert(cmd));
+			conversions.push(cmd);
 		}
 		
-		return when.all(conversions);
+		return when.reduce(conversions, function(prevPromise, cmd, i) {
+			console.log("Converting zoom level", zoomLevels - i + ZOOM_OFFSET);
+			return im.convert(cmd);
+		}, when.resolve(true));
+		
+		// return when.all(conversions);
 	}).then(function() {
-		console.log("Conversion finished");
+		console.log("Conversion finished, moving files into place");
 		return fs.readdir(newdirname);
 	}).then(function(files) {
 		var newfiles = files.map(function(n) {
@@ -64,7 +69,7 @@ var x = when.reduce(filenames, function(prevPromise, filename, i) {
 			}));
 		});
 	}).then(function () {
-		console.log("Done!");
+		console.log("Processing finished for", filename);
 	});
 
 }, when.resolve(true));
